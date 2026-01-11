@@ -35,7 +35,7 @@ func TestSmart_Flatten(t *testing.T) {
 
 	//assert
 	require.Equal(t, map[string]string{"device_protocol": "ATA", "device_wwn": "test-wwn"}, tags)
-	require.Equal(t, map[string]interface{}{"logical_block_size": 512, "power_cycle_count": int64(10), "power_on_hours": int64(10), "temp": int64(50)}, fields)
+	require.Equal(t, map[string]interface{}{"logical_block_size": int64(512), "power_cycle_count": int64(10), "power_on_hours": int64(10), "temp": int64(50)}, fields)
 }
 
 func TestSmart_Flatten_ATA(t *testing.T) {
