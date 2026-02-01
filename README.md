@@ -38,6 +38,9 @@ This is an actively maintained fork of [AnalogJ/scrutiny](https://github.com/Ana
 - **Day-Resolution Temperature Graphs** - More granular temperature history
 - **SAS Temperature Support** - Proper temperature readings for SAS drives
 - **SCT Temperature History Toggle** - Control SCT ERC settings per drive
+- **S.M.A.R.T Attribute Overrides** - Override manufacturer thresholds via UI or config
+- **Improved Dashboard Layout** - Sidebar navigation moved to top for better attribute visibility
+- **Enhanced Mobile UI** - Optimized layout for mobile devices
 - **Enhanced Seagate Drive Support** - Better timeout handling for Seagate drives
 - **SHA256 Checksums** - Verify release binary integrity
 
@@ -76,6 +79,9 @@ These S.M.A.R.T hard drive self-tests can help you detect and replace failing ha
 - **Custom Device Labels** - Add meaningful names to your drives
 - **Day-Resolution Graphs** - View temperature trends at daily granularity
 - **SAS Drive Support** - Full temperature support for SAS devices
+- **S.M.A.R.T Attribute Overrides** - Override thresholds per device via UI
+- **Improved UI Layout** - Top navigation for better S.M.A.R.T attribute visibility
+- **Mobile-Optimized Interface** - Better experience on mobile devices
 - **API Timeout Configuration** - Adjust timeouts for slow storage systems
 
 # Migration from AnalogJ/scrutiny
@@ -135,6 +141,8 @@ other Docker images:
 
 - `ghcr.io/starosdev/scrutiny:latest-collector` - Contains the Scrutiny data collector, `smartctl` binary and cron-like
   scheduler. You can run one collector on each server.
+- `ghcr.io/starosdev/scrutiny:latest-collector-zfs` - ZFS pool collector for monitoring ZFS health.
+  Run alongside or instead of the standard collector if you use ZFS. See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
 - `ghcr.io/starosdev/scrutiny:latest-web` - Contains the Web UI and API. Only one container necessary
 - `influxdb:2.2` - InfluxDB image, used by the Web container to persist SMART data. Only one container necessary.
   See [docs/TROUBLESHOOTING_INFLUXDB.md](./docs/TROUBLESHOOTING_INFLUXDB.md)
@@ -187,12 +195,13 @@ docker exec scrutiny /opt/scrutiny/bin/scrutiny-collector-metrics run
 # Configuration
 By default Scrutiny looks for its YAML configuration files in `/opt/scrutiny/config`
 
-There are two configuration files available:
+There are three configuration files available:
 
 - Webapp/API config via `scrutiny.yaml` - [example.scrutiny.yaml](example.scrutiny.yaml).
 - Collector config via `collector.yaml` - [example.collector.yaml](example.collector.yaml).
+- ZFS Collector config via `collector-zfs.yaml` - [example.collector-zfs.yaml](example.collector-zfs.yaml). See [docs/ZFS_POOL_MONITORING.md](./docs/ZFS_POOL_MONITORING.md) for setup instructions.
 
-Neither file is required, however if provided, it allows you to configure how Scrutiny functions.
+None of these files are required, however if provided, they allow you to configure how Scrutiny functions.
 
 ## Cron Schedule
 Unfortunately the Cron schedule cannot be configured via the `collector.yaml` (as the collector binary needs to be triggered by a scheduler/cron).
@@ -276,6 +285,54 @@ Or if you're not using docker, you can pass CLI arguments to the web server duri
 scrutiny start --debug --log-file /tmp/web.log
 ```
 
+### Web Server Environment Variable Overrides
+
+Any web server configuration key can be overridden via environment variables using the `SCRUTINY_` prefix.
+Dots and dashes in key names become underscores.
+
+| Config Key | Environment Variable | Default Value |
+| --- | --- | --- |
+| `web.listen.port` | `SCRUTINY_WEB_LISTEN_PORT` | `8080` |
+| `web.listen.host` | `SCRUTINY_WEB_LISTEN_HOST` | `0.0.0.0` |
+| `web.listen.basepath` | `SCRUTINY_WEB_LISTEN_BASEPATH` | `` |
+| `web.database.location` | `SCRUTINY_WEB_DATABASE_LOCATION` | `/opt/scrutiny/config/scrutiny.db` |
+| `web.database.journal_mode` | `SCRUTINY_WEB_DATABASE_JOURNAL_MODE` | `WAL` |
+| `web.src.frontend.path` | `SCRUTINY_WEB_SRC_FRONTEND_PATH` | `/opt/scrutiny/web` |
+| `web.influxdb.scheme` | `SCRUTINY_WEB_INFLUXDB_SCHEME` | `http` |
+| `web.influxdb.host` | `SCRUTINY_WEB_INFLUXDB_HOST` | `localhost` |
+| `web.influxdb.port` | `SCRUTINY_WEB_INFLUXDB_PORT` | `8086` |
+| `web.influxdb.org` | `SCRUTINY_WEB_INFLUXDB_ORG` | `scrutiny` |
+| `web.influxdb.bucket` | `SCRUTINY_WEB_INFLUXDB_BUCKET` | `metrics` |
+| `web.influxdb.token` | `SCRUTINY_WEB_INFLUXDB_TOKEN` | `scrutiny-default-admin-token` |
+| `web.influxdb.init_username` | `SCRUTINY_WEB_INFLUXDB_INIT_USERNAME` | `admin` |
+| `web.influxdb.init_password` | `SCRUTINY_WEB_INFLUXDB_INIT_PASSWORD` | `password12345` |
+| `web.influxdb.tls.insecure_skip_verify` | `SCRUTINY_WEB_INFLUXDB_TLS_INSECURE_SKIP_VERIFY` | `false` |
+| `web.influxdb.retention_policy` | `SCRUTINY_WEB_INFLUXDB_RETENTION_POLICY` | `true` |
+| `web.influxdb.retention.daily` | `SCRUTINY_WEB_INFLUXDB_RETENTION_DAILY` | `1296000` (15 days) |
+| `web.influxdb.retention.weekly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_WEEKLY` | `5443200` (9 weeks) |
+| `web.influxdb.retention.monthly` | `SCRUTINY_WEB_INFLUXDB_RETENTION_MONTHLY` | `65318400` (25 months) |
+| `web.metrics.enabled` | `SCRUTINY_WEB_METRICS_ENABLED` | `true` |
+| `log.level` | `SCRUTINY_LOG_LEVEL` | `INFO` |
+| `log.file` | `SCRUTINY_LOG_FILE` | `` |
+| `notify.urls` | `SCRUTINY_NOTIFY_URLS` | `` |
+| `failures.transient.ata` | `SCRUTINY_FAILURES_TRANSIENT_ATA` | `[195]` |
+| `failures.ignored.ata` | `SCRUTINY_FAILURES_IGNORED_ATA` | `[]` |
+| `failures.ignored.devstat` | `SCRUTINY_FAILURES_IGNORED_DEVSTAT` | `[]` |
+| `failures.ignored.nvme` | `SCRUTINY_FAILURES_IGNORED_NVME` | `[]` |
+| `failures.ignored.scsi` | `SCRUTINY_FAILURES_IGNORED_SCSI` | `[]` |
+
+Environment variables take precedence over config file values. This is useful for containerized
+deployments where you want to override specific settings without modifying the config file.
+
+Example:
+
+```bash
+docker run -e SCRUTINY_WEB_LISTEN_PORT=9090 \
+  -e SCRUTINY_WEB_INFLUXDB_HOST=influxdb.local \
+  -e SCRUTINY_LOG_LEVEL=DEBUG \
+  ghcr.io/starosdev/scrutiny:web
+```
+
 ## Collector
 
 You can use environmental variables to enable debug logging and/or log files for the collector:
@@ -290,6 +347,46 @@ Or if you're not using docker, you can pass CLI arguments to the collector durin
 ```bash
 scrutiny-collector-metrics run --debug --log-file /tmp/collector.log
 ```
+
+### Collector Environment Variable Overrides
+
+Any collector configuration key can be overridden via environment variables using the `COLLECTOR_` prefix.
+Dots and dashes in key names become underscores.
+
+| Config Key | Environment Variable | Default Value |
+| --- | --- | --- |
+| `host.id` | `COLLECTOR_HOST_ID` | `` |
+| `api.endpoint` | `COLLECTOR_API_ENDPOINT` | `http://localhost:8080` |
+| `api.timeout` | `COLLECTOR_API_TIMEOUT` | `60` |
+| `commands.metrics_smartctl_bin` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_BIN` | `smartctl` |
+| `commands.metrics_scan_args` | `COLLECTOR_COMMANDS_METRICS_SCAN_ARGS` | `--scan --json` |
+| `commands.metrics_info_args` | `COLLECTOR_COMMANDS_METRICS_INFO_ARGS` | `--info --json` |
+| `commands.metrics_smart_args` | `COLLECTOR_COMMANDS_METRICS_SMART_ARGS` | `--xall --json` |
+| `commands.metrics_smartctl_wait` | `COLLECTOR_COMMANDS_METRICS_SMARTCTL_WAIT` | `0` |
+| `allow_listed_devices` | `COLLECTOR_ALLOW_LISTED_DEVICES` | `[]` |
+| `log.level` | `COLLECTOR_LOG_LEVEL` | `INFO` |
+| `log.file` | `COLLECTOR_LOG_FILE` | `` |
+
+Environment variables take precedence over config file values. This is useful for containerized
+deployments where you want to override specific settings without modifying the config file.
+
+Example:
+
+```bash
+docker run -e COLLECTOR_COMMANDS_METRICS_SMART_ARGS="--xall --json -T permissive" \
+  -e COLLECTOR_API_ENDPOINT=http://scrutiny-web:8080 \
+  ghcr.io/starosdev/scrutiny:collector
+```
+
+### Docker-Only Environment Variables
+
+These environment variables are only available when running the collector in Docker containers (handled by the entrypoint script, not Viper configuration):
+
+| Environment Variable | Default Value | Description |
+| --- | --- | --- |
+| `COLLECTOR_CRON_SCHEDULE` | `0 0 * * *` | Cron schedule for SMART data collection |
+| `COLLECTOR_RUN_STARTUP` | `false` | Run collector immediately on container start |
+| `COLLECTOR_RUN_STARTUP_SLEEP` | `1` | Delay in seconds before startup collection |
 
 # Supported Architectures
 

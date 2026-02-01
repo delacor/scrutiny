@@ -7,8 +7,10 @@ package mock_database
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	pkg "github.com/analogj/scrutiny/webapp/backend/pkg"
+	database "github.com/analogj/scrutiny/webapp/backend/pkg/database"
 	models "github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	collector "github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	measurements "github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -53,6 +55,20 @@ func (mr *MockDeviceRepoMockRecorder) Close() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockDeviceRepo)(nil).Close))
 }
 
+// DeleteAttributeOverride mocks base method.
+func (m *MockDeviceRepo) DeleteAttributeOverride(ctx context.Context, id uint) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAttributeOverride", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteAttributeOverride indicates an expected call of DeleteAttributeOverride.
+func (mr *MockDeviceRepoMockRecorder) DeleteAttributeOverride(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAttributeOverride", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteAttributeOverride), ctx, id)
+}
+
 // DeleteDevice mocks base method.
 func (m *MockDeviceRepo) DeleteDevice(ctx context.Context, wwn string) error {
 	m.ctrl.T.Helper()
@@ -79,6 +95,51 @@ func (m *MockDeviceRepo) DeleteZFSPool(ctx context.Context, guid string) error {
 func (mr *MockDeviceRepoMockRecorder) DeleteZFSPool(ctx, guid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteZFSPool", reflect.TypeOf((*MockDeviceRepo)(nil).DeleteZFSPool), ctx, guid)
+}
+
+// GetAttributeOverrideByID mocks base method.
+func (m *MockDeviceRepo) GetAttributeOverrideByID(ctx context.Context, id uint) (*models.AttributeOverride, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAttributeOverrideByID", ctx, id)
+	ret0, _ := ret[0].(*models.AttributeOverride)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAttributeOverrideByID indicates an expected call of GetAttributeOverrideByID.
+func (mr *MockDeviceRepoMockRecorder) GetAttributeOverrideByID(ctx, id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributeOverrideByID", reflect.TypeOf((*MockDeviceRepo)(nil).GetAttributeOverrideByID), ctx, id)
+}
+
+// GetAttributeOverrides mocks base method.
+func (m *MockDeviceRepo) GetAttributeOverrides(ctx context.Context) ([]models.AttributeOverride, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAttributeOverrides", ctx)
+	ret0, _ := ret[0].([]models.AttributeOverride)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAttributeOverrides indicates an expected call of GetAttributeOverrides.
+func (mr *MockDeviceRepoMockRecorder) GetAttributeOverrides(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttributeOverrides", reflect.TypeOf((*MockDeviceRepo)(nil).GetAttributeOverrides), ctx)
+}
+
+// GetAvailableInfluxDBBuckets mocks base method.
+func (m *MockDeviceRepo) GetAvailableInfluxDBBuckets(ctx context.Context) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAvailableInfluxDBBuckets", ctx)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAvailableInfluxDBBuckets indicates an expected call of GetAvailableInfluxDBBuckets.
+func (mr *MockDeviceRepoMockRecorder) GetAvailableInfluxDBBuckets(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAvailableInfluxDBBuckets", reflect.TypeOf((*MockDeviceRepo)(nil).GetAvailableInfluxDBBuckets), ctx)
 }
 
 // GetDeviceDetails mocks base method.
@@ -109,6 +170,50 @@ func (m *MockDeviceRepo) GetDevices(ctx context.Context) ([]models.Device, error
 func (mr *MockDeviceRepoMockRecorder) GetDevices(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevices", reflect.TypeOf((*MockDeviceRepo)(nil).GetDevices), ctx)
+}
+
+// GetDevicesLastSeenTimes mocks base method.
+func (m *MockDeviceRepo) GetDevicesLastSeenTimes(ctx context.Context) (map[string]time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetDevicesLastSeenTimes", ctx)
+	ret0, _ := ret[0].(map[string]time.Time)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDevicesLastSeenTimes indicates an expected call of GetDevicesLastSeenTimes.
+func (mr *MockDeviceRepoMockRecorder) GetDevicesLastSeenTimes(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDevicesLastSeenTimes", reflect.TypeOf((*MockDeviceRepo)(nil).GetDevicesLastSeenTimes), ctx)
+}
+
+// GetMergedOverrides mocks base method.
+func (m *MockDeviceRepo) GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMergedOverrides", ctx)
+	ret0, _ := ret[0].([]overrides.AttributeOverride)
+	return ret0
+}
+
+// GetMergedOverrides indicates an expected call of GetMergedOverrides.
+func (mr *MockDeviceRepoMockRecorder) GetMergedOverrides(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMergedOverrides", reflect.TypeOf((*MockDeviceRepo)(nil).GetMergedOverrides), ctx)
+}
+
+// GetPreviousSmartSubmission mocks base method.
+func (m *MockDeviceRepo) GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPreviousSmartSubmission", ctx, wwn)
+	ret0, _ := ret[0].([]measurements.Smart)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPreviousSmartSubmission indicates an expected call of GetPreviousSmartSubmission.
+func (mr *MockDeviceRepoMockRecorder) GetPreviousSmartSubmission(ctx, wwn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPreviousSmartSubmission", reflect.TypeOf((*MockDeviceRepo)(nil).GetPreviousSmartSubmission), ctx, wwn)
 }
 
 // GetSmartAttributeHistory mocks base method.
@@ -217,11 +322,12 @@ func (mr *MockDeviceRepoMockRecorder) GetZFSPoolsSummary(ctx interface{}) *gomoc
 }
 
 // HealthCheck mocks base method.
-func (m *MockDeviceRepo) HealthCheck(ctx context.Context) error {
+func (m *MockDeviceRepo) HealthCheck(ctx context.Context) (*database.HealthCheckResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HealthCheck", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(*database.HealthCheckResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // HealthCheck indicates an expected call of HealthCheck.
@@ -243,6 +349,20 @@ func (m *MockDeviceRepo) LoadSettings(ctx context.Context) (*models.Settings, er
 func (mr *MockDeviceRepoMockRecorder) LoadSettings(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LoadSettings", reflect.TypeOf((*MockDeviceRepo)(nil).LoadSettings), ctx)
+}
+
+// RecalculateDeviceStatusFromHistory mocks base method.
+func (m *MockDeviceRepo) RecalculateDeviceStatusFromHistory(ctx context.Context, wwn string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecalculateDeviceStatusFromHistory", ctx, wwn)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecalculateDeviceStatusFromHistory indicates an expected call of RecalculateDeviceStatusFromHistory.
+func (mr *MockDeviceRepoMockRecorder) RecalculateDeviceStatusFromHistory(ctx, wwn interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecalculateDeviceStatusFromHistory", reflect.TypeOf((*MockDeviceRepo)(nil).RecalculateDeviceStatusFromHistory), ctx, wwn)
 }
 
 // RegisterDevice mocks base method.
@@ -286,6 +406,20 @@ func (m *MockDeviceRepo) ResetDeviceStatus(ctx context.Context, wwn string) (mod
 func (mr *MockDeviceRepoMockRecorder) ResetDeviceStatus(ctx, wwn interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetDeviceStatus", reflect.TypeOf((*MockDeviceRepo)(nil).ResetDeviceStatus), ctx, wwn)
+}
+
+// SaveAttributeOverride mocks base method.
+func (m *MockDeviceRepo) SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveAttributeOverride", ctx, override)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveAttributeOverride indicates an expected call of SaveAttributeOverride.
+func (mr *MockDeviceRepoMockRecorder) SaveAttributeOverride(ctx, override interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveAttributeOverride", reflect.TypeOf((*MockDeviceRepo)(nil).SaveAttributeOverride), ctx, override)
 }
 
 // SaveSettings mocks base method.
@@ -415,6 +549,34 @@ func (m *MockDeviceRepo) UpdateDeviceStatus(ctx context.Context, wwn string, sta
 func (mr *MockDeviceRepoMockRecorder) UpdateDeviceStatus(ctx, wwn, status interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceStatus", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceStatus), ctx, wwn, status)
+}
+
+// UpdateDeviceSmartDisplayMode mocks base method.
+func (m *MockDeviceRepo) UpdateDeviceSmartDisplayMode(ctx context.Context, wwn string, mode string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDeviceSmartDisplayMode", ctx, wwn, mode)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDeviceSmartDisplayMode indicates an expected call of UpdateDeviceSmartDisplayMode.
+func (mr *MockDeviceRepoMockRecorder) UpdateDeviceSmartDisplayMode(ctx, wwn, mode interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceSmartDisplayMode", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceSmartDisplayMode), ctx, wwn, mode)
+}
+
+// UpdateDeviceHasForcedFailure mocks base method.
+func (m *MockDeviceRepo) UpdateDeviceHasForcedFailure(ctx context.Context, wwn string, hasForcedFailure bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateDeviceHasForcedFailure", ctx, wwn, hasForcedFailure)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateDeviceHasForcedFailure indicates an expected call of UpdateDeviceHasForcedFailure.
+func (mr *MockDeviceRepoMockRecorder) UpdateDeviceHasForcedFailure(ctx, wwn, hasForcedFailure interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateDeviceHasForcedFailure", reflect.TypeOf((*MockDeviceRepo)(nil).UpdateDeviceHasForcedFailure), ctx, wwn, hasForcedFailure)
 }
 
 // UpdateZFSPoolArchived mocks base method.

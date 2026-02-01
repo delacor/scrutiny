@@ -2,6 +2,136 @@
 
 All notable changes to Scrutiny will be documented in this file.
 
+## [1.19.2](https://github.com/Starosdev/scrutiny/compare/v1.19.1...v1.19.2) (2026-01-31)
+
+### Bug Fixes
+
+* **overrides:** force_status=failed bypasses threshold filter ([#164](https://github.com/Starosdev/scrutiny/issues/164)) ([#175](https://github.com/Starosdev/scrutiny/issues/175)) ([dc7b914](https://github.com/Starosdev/scrutiny/commit/dc7b914aadaf0dd87f9d87c7d0284b1e7ae0301c))
+
+## [1.19.1](https://github.com/Starosdev/scrutiny/compare/v1.19.0...v1.19.1) (2026-01-31)
+
+### Bug Fixes
+
+* **notify:** fix missed ping notifications not being sent ([#126](https://github.com/Starosdev/scrutiny/issues/126)) ([#174](https://github.com/Starosdev/scrutiny/issues/174)) ([f5bc135](https://github.com/Starosdev/scrutiny/commit/f5bc135f280254e0f8d878ddd76d425faac2cb43))
+
+## [1.19.0](https://github.com/Starosdev/scrutiny/compare/v1.18.0...v1.19.0) (2026-01-30)
+
+### Features
+
+* dark mode toggle, temperature chart visibility, and override recalculation ([#165](https://github.com/Starosdev/scrutiny/issues/165), [#171](https://github.com/Starosdev/scrutiny/issues/171), [#164](https://github.com/Starosdev/scrutiny/issues/164)) ([#173](https://github.com/Starosdev/scrutiny/issues/173)) ([eec5bc4](https://github.com/Starosdev/scrutiny/commit/eec5bc4959458abfdc4b88a342adf07cbcf5f8cc)), closes [#126](https://github.com/Starosdev/scrutiny/issues/126) [#126](https://github.com/Starosdev/scrutiny/issues/126) [#163](https://github.com/Starosdev/scrutiny/issues/163) [#163](https://github.com/Starosdev/scrutiny/issues/163) [#128](https://github.com/Starosdev/scrutiny/issues/128) [#163](https://github.com/Starosdev/scrutiny/issues/163)
+
+## [1.18.0](https://github.com/Starosdev/scrutiny/compare/v1.17.2...v1.18.0) (2026-01-30)
+
+### Features
+
+* **ui:** SMART display mode toggle and Docker fixes ([#163](https://github.com/Starosdev/scrutiny/issues/163)) ([#172](https://github.com/Starosdev/scrutiny/issues/172)) ([ac74f3d](https://github.com/Starosdev/scrutiny/commit/ac74f3d213efde7177078ca328e48e54d4c38c47)), closes [#128](https://github.com/Starosdev/scrutiny/issues/128) [#164](https://github.com/Starosdev/scrutiny/issues/164) [#164](https://github.com/Starosdev/scrutiny/issues/164)
+
+## [1.17.2](https://github.com/Starosdev/scrutiny/compare/v1.17.1...v1.17.2) (2026-01-30)
+
+### Bug Fixes
+
+* **ui:** dark mode improvements and drive filter toggle ([#165](https://github.com/Starosdev/scrutiny/issues/165)) ([#170](https://github.com/Starosdev/scrutiny/issues/170)) ([bc39a72](https://github.com/Starosdev/scrutiny/commit/bc39a723018b4052a2110b1184b9062625d7e072))
+
+## [1.17.1](https://github.com/Starosdev/scrutiny/compare/v1.17.0...v1.17.1) (2026-01-30)
+
+### Bug Fixes
+
+* **diagnostics:** fix missed ping monitor initialization and interface ([#126](https://github.com/Starosdev/scrutiny/issues/126)) ([a8375e6](https://github.com/Starosdev/scrutiny/commit/a8375e6467034ec4004288100123f420a5d143a8))
+
+## [1.17.0](https://github.com/Starosdev/scrutiny/compare/v1.16.3...v1.17.0) (2026-01-27)
+
+### Features
+
+* **api:** improve health check depth with structured response ([#139](https://github.com/Starosdev/scrutiny/issues/139)) ([#153](https://github.com/Starosdev/scrutiny/issues/153)) ([494f8f9](https://github.com/Starosdev/scrutiny/commit/494f8f98050316515ed0fe7126e967d2bd87c0ed))
+* **backend:** add container CPU quota awareness with automaxprocs ([#133](https://github.com/Starosdev/scrutiny/issues/133)) ([45a8838](https://github.com/Starosdev/scrutiny/commit/45a88385bdc95a8198c51c145fd7b98c7344ce58)), closes [#72](https://github.com/Starosdev/scrutiny/issues/72) [#82](https://github.com/Starosdev/scrutiny/issues/82) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#74](https://github.com/Starosdev/scrutiny/issues/74)
+* **config:** make InfluxDB retention periods configurable ([#138](https://github.com/Starosdev/scrutiny/issues/138)) ([#152](https://github.com/Starosdev/scrutiny/issues/152)) ([b4c25b1](https://github.com/Starosdev/scrutiny/commit/b4c25b114184a1af510c402dd5940d4ba444016a))
+* **diagnostics:** add comprehensive diagnostics for missed ping monitoring ([#160](https://github.com/Starosdev/scrutiny/issues/160)) ([4a30a50](https://github.com/Starosdev/scrutiny/commit/4a30a5047c7eb3094835f7dcef698fc30ea0898b)), closes [#126](https://github.com/Starosdev/scrutiny/issues/126) [#126](https://github.com/Starosdev/scrutiny/issues/126)
+* **frontend:** improve temperature graph UX ([#40](https://github.com/Starosdev/scrutiny/issues/40)) ([#145](https://github.com/Starosdev/scrutiny/issues/145)) ([23912a5](https://github.com/Starosdev/scrutiny/commit/23912a5152317e89ad399b65edbc74d8516c818a))
+* **notify:** add missed collector ping notifications ([#140](https://github.com/Starosdev/scrutiny/issues/140)) ([c2d8bb4](https://github.com/Starosdev/scrutiny/commit/c2d8bb45013a9a7a1cef6fd378d9881466c3ab17)), closes [#72](https://github.com/Starosdev/scrutiny/issues/72) [#82](https://github.com/Starosdev/scrutiny/issues/82) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#74](https://github.com/Starosdev/scrutiny/issues/74)
+
+### Bug Fixes
+
+* **api:** return attribute override ID after save for UI deletion ([#142](https://github.com/Starosdev/scrutiny/issues/142)) ([5ef3d0f](https://github.com/Starosdev/scrutiny/commit/5ef3d0fdc5fbf12c213416a1cd38923a5e632a52)), closes [#141](https://github.com/Starosdev/scrutiny/issues/141)
+* **docker:** add SYS_ADMIN capability for NVMe device support ([#159](https://github.com/Starosdev/scrutiny/issues/159)) ([bfddd96](https://github.com/Starosdev/scrutiny/commit/bfddd967588a78cac129fd0f92638883430f3eff)), closes [#26](https://github.com/Starosdev/scrutiny/issues/26) [#209](https://github.com/Starosdev/scrutiny/issues/209)
+* **security:** prevent Flux query injection via parameterized queries ([#149](https://github.com/Starosdev/scrutiny/issues/149)) ([0fcb6f5](https://github.com/Starosdev/scrutiny/commit/0fcb6f5c920ef327879581a0765cc00791d6c2d8)), closes [#135](https://github.com/Starosdev/scrutiny/issues/135) [#135](https://github.com/Starosdev/scrutiny/issues/135)
+* **validation:** accept serial numbers as WWN fallback for NVMe/SCSI devices ([#158](https://github.com/Starosdev/scrutiny/issues/158)) ([c4daf08](https://github.com/Starosdev/scrutiny/commit/c4daf082b684272733f3735ae4382c5ed4dbc4d8)), closes [#144](https://github.com/Starosdev/scrutiny/issues/144) [#133](https://github.com/Starosdev/scrutiny/issues/133) [#72](https://github.com/Starosdev/scrutiny/issues/72) [#82](https://github.com/Starosdev/scrutiny/issues/82) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#71](https://github.com/Starosdev/scrutiny/issues/71) [#74](https://github.com/Starosdev/scrutiny/issues/74)
+
+### Refactoring
+
+* **backend:** replace fmt.Printf with structured logging ([#136](https://github.com/Starosdev/scrutiny/issues/136)) ([#150](https://github.com/Starosdev/scrutiny/issues/150)) ([4369e9a](https://github.com/Starosdev/scrutiny/commit/4369e9a953de3436efd9677f61f6431b1cd5dec2))
+* migrate from moment.js to dayjs for date handling ([#147](https://github.com/Starosdev/scrutiny/issues/147)) ([b6463cc](https://github.com/Starosdev/scrutiny/commit/b6463ccf701196e116ab3f13a6425d95a806755a))
+
+## [1.16.3](https://github.com/Starosdev/scrutiny/compare/v1.16.2...v1.16.3) (2026-01-26)
+
+### Bug Fixes
+
+* **database:** revert parameterized queries for InfluxDB OSS compatibility ([#157](https://github.com/Starosdev/scrutiny/issues/157)) ([6deb0bc](https://github.com/Starosdev/scrutiny/commit/6deb0bc414f1c4274111b40bc7d3f28446c15228)), closes [#155](https://github.com/Starosdev/scrutiny/issues/155)
+
+## [1.16.2](https://github.com/Starosdev/scrutiny/compare/v1.16.1...v1.16.2) (2026-01-26)
+
+### Bug Fixes
+
+* **ci:** improve release notes script output ([accb28d](https://github.com/Starosdev/scrutiny/commit/accb28d794eb9bd9f3433d6744ebc68f9a07f2b9))
+
+## [1.16.1](https://github.com/Starosdev/scrutiny/compare/v1.16.0...v1.16.1) (2026-01-26)
+
+### Bug Fixes
+
+* **ci:** generate release notes from merged PRs ([5b8ff60](https://github.com/Starosdev/scrutiny/commit/5b8ff60e10b2a28f2327766a5f3c8e65475d264b))
+
+## [1.16.0](https://github.com/Starosdev/scrutiny/compare/v1.15.8...v1.16.0) (2026-01-26)
+
+### Features
+
+* manual release trigger ([d7e7bd2](https://github.com/Starosdev/scrutiny/commit/d7e7bd2e6bdfd231d59348186e69b2052fb81512))
+## [1.15.8](https://github.com/Starosdev/scrutiny/compare/v1.15.7...v1.15.8) (2026-01-25)
+
+### Refactoring
+
+* migrate from moment.js to dayjs for date handling ([#147](https://github.com/Starosdev/scrutiny/issues/147)) ([ab6584d](https://github.com/Starosdev/scrutiny/commit/ab6584db48f761f332074672d2c11cfeaff36ed6))
+
+## [1.15.7](https://github.com/Starosdev/scrutiny/compare/v1.15.6...v1.15.7) (2026-01-24)
+
+### Bug Fixes
+
+* **docker:** use exec in service scripts to reduce process overhead ([#131](https://github.com/Starosdev/scrutiny/issues/131)) ([43eba12](https://github.com/Starosdev/scrutiny/commit/43eba12b7e574dede4fd2599a14b856369a8e713)), closes [#111](https://github.com/Starosdev/scrutiny/issues/111)
+
+## [1.15.6](https://github.com/Starosdev/scrutiny/compare/v1.15.5...v1.15.6) (2026-01-24)
+
+### Bug Fixes
+
+* **notify:** handle Zulip 60-character topic limit and add force_topic support ([#132](https://github.com/Starosdev/scrutiny/issues/132)) ([a6b45cd](https://github.com/Starosdev/scrutiny/commit/a6b45cd7d6309e74e2fdf934fc3b9d8165c52b95)), closes [#110](https://github.com/Starosdev/scrutiny/issues/110)
+
+## [1.15.5](https://github.com/Starosdev/scrutiny/compare/v1.15.4...v1.15.5) (2026-01-24)
+
+### Bug Fixes
+
+* **backend:** use safe type assertions for SMART metrics parsing ([#130](https://github.com/Starosdev/scrutiny/issues/130)) ([2ec3eb1](https://github.com/Starosdev/scrutiny/commit/2ec3eb1160e072f3c58bc5e7c1583648b1dba412)), closes [#107](https://github.com/Starosdev/scrutiny/issues/107)
+
+## [1.15.4](https://github.com/Starosdev/scrutiny/compare/v1.15.3...v1.15.4) (2026-01-24)
+
+### Bug Fixes
+
+* **notify:** correct repeat notification detection to compare against previous submission ([#129](https://github.com/Starosdev/scrutiny/issues/129)) ([9930980](https://github.com/Starosdev/scrutiny/commit/993098092759d9568aba14de4dfa01188296d6a6)), closes [#67](https://github.com/Starosdev/scrutiny/issues/67)
+
+## [1.15.3](https://github.com/Starosdev/scrutiny/compare/v1.15.2...v1.15.3) (2026-01-24)
+
+### Build
+
+* update Go 1.23 and dependencies for CVE fixes ([bb36d66](https://github.com/Starosdev/scrutiny/commit/bb36d665bc3d04d9d8714152158943596d8e232c))
+
+## [1.15.2](https://github.com/Starosdev/scrutiny/compare/v1.15.1...v1.15.2) (2026-01-24)
+
+### Bug Fixes
+
+* **backend:** scsi wrongly uses nvme metadata ([#124](https://github.com/Starosdev/scrutiny/issues/124)) ([fac6c3e](https://github.com/Starosdev/scrutiny/commit/fac6c3ecbaad55ae78c31e5f3549222a25bc9ae2))
+
+## [1.15.1](https://github.com/Starosdev/scrutiny/compare/v1.15.0...v1.15.1) (2026-01-24)
+
+### Bug Fixes
+
+* **frontend:** improve detail view table layout for issue [#122](https://github.com/Starosdev/scrutiny/issues/122) ([#127](https://github.com/Starosdev/scrutiny/issues/127)) ([b0907f8](https://github.com/Starosdev/scrutiny/commit/b0907f839478455888dc41a70bdb0da7406fe6fe))
+
 ## [1.15.0](https://github.com/Starosdev/scrutiny/compare/v1.14.0...v1.15.0) (2026-01-23)
 
 ### Features

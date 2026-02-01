@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"mime"
 	"net/http"
+	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
@@ -20,9 +24,10 @@ import (
 )
 
 type AppEngine struct {
-	Config           config.Interface
-	Logger           *logrus.Entry
-	MetricsCollector *metrics.Collector
+	Config            config.Interface
+	Logger            *logrus.Entry
+	MetricsCollector  *metrics.Collector
+	MissedPingMonitor *MissedPingMonitor
 }
 
 func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
@@ -43,6 +48,11 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 	r.Use(middleware.LoggerMiddleware(logger))
 	r.Use(middleware.RepositoryMiddleware(ae.Config, logger))
 	r.Use(middleware.ConfigMiddleware(ae.Config))
+
+	// Add missed ping monitor middleware if available
+	if ae.MissedPingMonitor != nil {
+		r.Use(middleware.MissedPingMonitorMiddleware(ae.MissedPingMonitor))
+	}
 
 	// Initialize metrics collector if enabled
 	if ae.Config.GetBool("web.metrics.enabled") {
@@ -65,7 +75,8 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 		{
 			api.GET("/health", handler.HealthCheck)
 			api.HEAD("/health", handler.HealthCheck)
-			api.POST("/health/notify", handler.SendTestNotification) //check if notifications are configured correctly
+			api.POST("/health/notify", handler.SendTestNotification)        //check if notifications are configured correctly
+			api.GET("/health/missed-ping-status", handler.GetMissedPingStatus) //get missed ping monitor diagnostic status
 
 			api.POST("/devices/register", handler.RegisterDevices)         //used by Collector to register new devices and retrieve filtered list
 			api.GET("/summary", handler.GetDevicesSummary)                 //used by Dashboard
@@ -83,8 +94,9 @@ func (ae *AppEngine) Setup(logger *logrus.Entry) *gin.Engine {
 			api.POST("/device/:wwn/unarchive", handler.UnarchiveDevice) //used by UI to unarchive device
 			api.POST("/device/:wwn/mute", handler.MuteDevice)           //used by UI to mute device
 			api.POST("/device/:wwn/unmute", handler.UnmuteDevice)       //used by UI to unmute device
-			api.POST("/device/:wwn/label", handler.UpdateDeviceLabel)   //used by UI to set device label
-			api.DELETE("/device/:wwn", handler.DeleteDevice)            //used by UI to delete device
+			api.POST("/device/:wwn/label", handler.UpdateDeviceLabel)                         //used by UI to set device label
+			api.POST("/device/:wwn/smart-display-mode", handler.UpdateDeviceSmartDisplayMode) //used by UI to set SMART attribute display mode
+			api.DELETE("/device/:wwn", handler.DeleteDevice)                                  //used by UI to delete device
 
 			api.GET("/settings", handler.GetSettings)   //used to get settings
 			api.POST("/settings", handler.SaveSettings) //used to save settings
@@ -186,7 +198,15 @@ func (ae *AppEngine) Start() error {
 			filepath.Dir(ae.Config.GetString("web.database.location"))))
 	}
 
+	// Create the missed ping monitor BEFORE Setup() so middleware can be registered
+	missedPingMonitor := NewMissedPingMonitor(ae)
+	ae.MissedPingMonitor = missedPingMonitor // Store reference before Setup()
+
 	r := ae.Setup(ae.Logger)
+
+	// Start the missed ping monitor after router is set up
+	missedPingMonitor.Start()
+	ae.Logger.Info("Missed ping monitor started")
 
 	// Load initial metrics data asynchronously at startup (if metrics enabled)
 	if ae.Config.GetBool("web.metrics.enabled") && ae.MetricsCollector != nil {
@@ -204,5 +224,44 @@ func (ae *AppEngine) Start() error {
 		}()
 	}
 
-	return r.Run(fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port")))
+	// Create HTTP server for graceful shutdown support
+	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: r,
+	}
+
+	// Channel to receive shutdown signals
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start server in a goroutine
+	go func() {
+		ae.Logger.Infof("Starting server on %s", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			ae.Logger.Fatalf("Failed to start server: %v", err)
+		}
+	}()
+
+	// Wait for shutdown signal
+	<-quit
+	ae.Logger.Info("Shutdown signal received, initiating graceful shutdown...")
+
+	// Stop the missed ping monitor first
+	if ae.MissedPingMonitor != nil {
+		ae.MissedPingMonitor.Stop()
+	}
+
+	// Create a deadline for shutdown (give 30 seconds for graceful shutdown)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Shutdown the HTTP server gracefully
+	if err := srv.Shutdown(ctx); err != nil {
+		ae.Logger.Errorf("Server forced to shutdown: %v", err)
+		return err
+	}
+
+	ae.Logger.Info("Server shutdown complete")
+	return nil
 }

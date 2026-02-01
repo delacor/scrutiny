@@ -31,6 +31,7 @@ const NotifyFailureTypeEmailTest = "EmailTest"
 const NotifyFailureTypeBothFailure = "SmartFailure" //SmartFailure always takes precedence when Scrutiny & Smart failed.
 const NotifyFailureTypeSmartFailure = "SmartFailure"
 const NotifyFailureTypeScrutinyFailure = "ScrutinyFailure"
+const NotifyFailureTypeMissedPing = "MissedPing"
 
 // ShouldNotify check if the error Message should be filtered (level mismatch or filtered_attributes)
 func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs measurements.Smart, statusThreshold pkg.MetricsStatusThreshold, statusFilterAttributes pkg.MetricsStatusFilterAttributes, repeatNotifications bool, c *gin.Context, deviceRepo database.DeviceRepo, cfg config.Interface) bool {
@@ -128,12 +129,14 @@ func ShouldNotify(logger logrus.FieldLogger, device models.Device, smartAttrs me
 	logger.Debugf("ShouldNotify: device %s has %d failing attributes after filters (device_status=%d)", device.WWN, len(failingAttributes), device.DeviceStatus)
 
 	// If the user doesn't want repeated notifications when the failing value doesn't change, we need to get the last value from the db
+	// We use GetPreviousSmartSubmission which returns raw data (not daily-aggregated) so we compare against
+	// the actual previous submission, not the previous day's value.
 	var lastPoints []measurements.Smart
 	var err error
 	if !repeatNotifications {
-		lastPoints, err = deviceRepo.GetSmartAttributeHistory(c, c.Param("wwn"), database.DURATION_KEY_FOREVER, 1, 1, failingAttributes)
-		if err == nil || len(lastPoints) < 1 {
-			logger.Warningln("Could not get the most recent data points from the database. This is expected to happen only if this is the very first submission of data for the device.")
+		lastPoints, err = deviceRepo.GetPreviousSmartSubmission(c, c.Param("wwn"))
+		if err != nil || len(lastPoints) < 1 {
+			logger.Debugln("Could not get the previous submission from the database. This is expected for the first or second submission of data for the device.")
 		}
 	}
 	for _, attrId := range failingAttributes {
@@ -281,8 +284,8 @@ func (n *Notify) Send() error {
 	n.Logger.Debugf("Configured notification services: %v", configUrls)
 
 	if len(configUrls) == 0 {
-		n.Logger.Infof("No notification endpoints configured. Skipping failure notification.")
-		return nil
+		n.Logger.Warnf("No notification endpoints configured. Cannot send notification.")
+		return errors.New("no notification endpoints configured")
 	}
 
 	//remove http:// https:// and script:// prefixed urls
@@ -390,8 +393,6 @@ func (n *Notify) SendScriptNotification(scriptUrl string) error {
 }
 
 func (n *Notify) SendShoutrrrNotification(shoutrrrUrl string) error {
-
-	fmt.Printf("Sending Notifications to %v", shoutrrrUrl)
 	n.Logger.Infof("Sending notifications to %v", shoutrrrUrl)
 
 	sender, err := shoutrrr.CreateSender(shoutrrrUrl)
@@ -473,8 +474,119 @@ func (n *Notify) GenShoutrrrNotificationParams(shoutrrrUrl string) (string, *sho
 	case "telegram":
 		(*params)["title"] = subject
 	case "zulip":
+		// Zulip has a 60 character limit on topics (enforced by shoutrrr)
+		if len(subject) > 60 {
+			subject = subject[:60]
+		}
+		// Allow users to override the topic via force_topic URL parameter
+		urlTopic := serviceURL.Query()["force_topic"]
+		if len(urlTopic) > 0 && urlTopic[len(urlTopic)-1] != "" {
+			subject = urlTopic[len(urlTopic)-1]
+			// Also truncate force_topic to 60 chars for robustness
+			if len(subject) > 60 {
+				subject = subject[:60]
+			}
+		}
 		(*params)["topic"] = subject
 	}
 
 	return serviceName, params, nil
+}
+
+// MissedPingPayload represents a notification for a missed collector ping
+type MissedPingPayload struct {
+	HostId         string    `json:"host_id,omitempty"`
+	DeviceWWN      string    `json:"device_wwn"`
+	DeviceName     string    `json:"device_name"`
+	DeviceSerial   string    `json:"device_serial"`
+	DeviceLabel    string    `json:"device_label,omitempty"`
+	LastSeenTime   time.Time `json:"last_seen_time"`
+	TimeoutMinutes int       `json:"timeout_minutes"`
+
+	Date        string `json:"date"`
+	FailureType string `json:"failure_type"`
+	Subject     string `json:"subject"`
+	Message     string `json:"message"`
+}
+
+// NewMissedPingPayload creates a payload for missed collector ping notifications
+func NewMissedPingPayload(device models.Device, lastSeenTime time.Time, timeoutMinutes int) MissedPingPayload {
+	payload := MissedPingPayload{
+		HostId:         strings.TrimSpace(device.HostId),
+		DeviceWWN:      device.WWN,
+		DeviceName:     device.DeviceName,
+		DeviceSerial:   device.SerialNumber,
+		DeviceLabel:    strings.TrimSpace(device.Label),
+		LastSeenTime:   lastSeenTime,
+		TimeoutMinutes: timeoutMinutes,
+		Date:           time.Now().Format(time.RFC3339),
+		FailureType:    NotifyFailureTypeMissedPing,
+	}
+
+	payload.Subject = payload.generateSubject()
+	payload.Message = payload.generateMessage()
+	return payload
+}
+
+func (p *MissedPingPayload) generateSubject() string {
+	deviceIdentifier := p.DeviceName
+	if len(p.DeviceLabel) > 0 {
+		deviceIdentifier = fmt.Sprintf("%s (%s)", p.DeviceLabel, p.DeviceName)
+	}
+	if len(p.HostId) > 0 {
+		return fmt.Sprintf("Scrutiny collector missed ping on [host]device: [%s]%s", p.HostId, deviceIdentifier)
+	}
+	return fmt.Sprintf("Scrutiny collector missed ping on device: %s", deviceIdentifier)
+}
+
+func (p *MissedPingPayload) generateMessage() string {
+	timeSinceLastSeen := time.Since(p.LastSeenTime).Round(time.Minute)
+
+	messageParts := []string{
+		fmt.Sprintf("Scrutiny has not received data from collector for device: %s", p.DeviceName),
+	}
+	if len(p.HostId) > 0 {
+		messageParts = append(messageParts, fmt.Sprintf("Host Id: %s", p.HostId))
+	}
+	messageParts = append(messageParts,
+		fmt.Sprintf("Device WWN: %s", p.DeviceWWN),
+		fmt.Sprintf("Device Serial: %s", p.DeviceSerial),
+	)
+	if len(p.DeviceLabel) > 0 {
+		messageParts = append(messageParts, fmt.Sprintf("Device Label: %s", p.DeviceLabel))
+	}
+	messageParts = append(messageParts,
+		"",
+		fmt.Sprintf("Last seen: %s (%s ago)", p.LastSeenTime.Format(time.RFC3339), timeSinceLastSeen),
+		fmt.Sprintf("Timeout threshold: %d minutes", p.TimeoutMinutes),
+		"",
+		"Please check that the collector is running and can reach the Scrutiny server.",
+	)
+
+	return strings.Join(messageParts, "\n")
+}
+
+// NewMissedPing creates a Notify instance for missed collector ping notifications
+func NewMissedPing(logger logrus.FieldLogger, appconfig config.Interface, device models.Device, lastSeenTime time.Time, timeoutMinutes int) Notify {
+	missedPingPayload := NewMissedPingPayload(device, lastSeenTime, timeoutMinutes)
+
+	// Convert MissedPingPayload to standard Payload for compatibility with Send()
+	payload := Payload{
+		HostId:       missedPingPayload.HostId,
+		DeviceType:   device.DeviceType,
+		DeviceName:   missedPingPayload.DeviceName,
+		DeviceSerial: missedPingPayload.DeviceSerial,
+		DeviceLabel:  missedPingPayload.DeviceLabel,
+		Test:         false,
+		Date:         missedPingPayload.Date,
+		FailureType:  missedPingPayload.FailureType,
+		Subject:      missedPingPayload.Subject,
+		Message:      missedPingPayload.Message,
+	}
+
+	return Notify{
+		Logger:  logger,
+		Config:  appconfig,
+		Payload: payload,
+	}
 }

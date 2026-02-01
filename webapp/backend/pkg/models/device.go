@@ -41,11 +41,13 @@ type Device struct {
 	DeviceType     string `json:"device_type"`     //device type is used for querying with -d/t flag, should only be used by collector.
 
 	// User provided metadata
-	Label  string `json:"label"`
-	HostId string `json:"host_id"`
+	Label            string `json:"label"`
+	HostId           string `json:"host_id"`
+	SmartDisplayMode string `json:"smart_display_mode" gorm:"default:'scrutiny'"` // "scrutiny", "raw", or "normalized"
 
 	// Data set by Scrutiny
-	DeviceStatus pkg.DeviceStatus `json:"device_status"`
+	DeviceStatus     pkg.DeviceStatus `json:"device_status"`
+	HasForcedFailure bool             `json:"has_forced_failure" gorm:"default:false"` // True when override with action=force_status, status=failed is applied
 }
 
 func (dv *Device) IsAta() bool {

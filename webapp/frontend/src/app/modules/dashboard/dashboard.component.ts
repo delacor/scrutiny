@@ -1,6 +1,7 @@
 import {
     AfterViewInit,
     ChangeDetectionStrategy,
+    ChangeDetectorRef,
     Component,
     OnDestroy,
     OnInit,
@@ -36,9 +37,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
     tempDurationKey = 'forever'
     config: AppConfig;
     showArchived: boolean;
+    visibleDrives: { [wwn: string]: boolean } = {};
 
     // Private
     private _unsubscribeAll: Subject<void>;
+    private readonly systemPrefersDark: boolean;
     @ViewChild('tempChart', { static: false }) tempChart: ChartComponent;
 
     /**
@@ -52,13 +55,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
     constructor(
         private _dashboardService: DashboardService,
         private _configService: ScrutinyConfigService,
+        private _changeDetectorRef: ChangeDetectorRef,
         public dialog: MatDialog,
         private router: Router,
     )
     {
         // Set the private defaults
         this._unsubscribeAll = new Subject();
-
+        this.systemPrefersDark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
     }
 
     // -----------------------------------------------------------------------------------------------------
@@ -104,6 +108,9 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                     const hostDeviceList = this.hostGroups[hostid] || []
                     hostDeviceList.push(wwn)
                     this.hostGroups[hostid] = hostDeviceList
+
+                    // Initialize drive visibility (default to visible)
+                    this.visibleDrives[wwn] ??= true;
                 }
                 // Prepare the chart data
                 this._prepareChartData();
@@ -141,6 +148,11 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
         const deviceTemperatureSeries = []
 
         for (const wwn in this.summaryData) {
+            // Skip drives that are hidden by the filter
+            if (this.visibleDrives[wwn] === false) {
+                continue
+            }
+
             const deviceSummary = this.summaryData[wwn]
             if (!deviceSummary.temp_history) {
                 continue
@@ -173,6 +185,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
         }
         return deviceTemperatureSeries
     }
+
+    private determineTheme(config: AppConfig): string {
+        if (config?.theme === 'system') {
+            return this.systemPrefersDark ? 'dark' : 'light';
+        }
+        return config?.theme || 'light';
+    }
+
+    private isDarkMode(): boolean {
+        return this.determineTheme(this.config) === 'dark';
+    }
+
     /**
      * Prepare the chart data from the data
      *
@@ -180,7 +204,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
      */
     private _prepareChartData(): void
     {
-        // Account balance
+        const temperatureUnit = this.config.temperature_unit === 'celsius' ? 'C' : 'F';
+
         this.temperatureOptions = {
             chart  : {
                 animations: {
@@ -195,7 +220,10 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                 height    : '100%',
                 type      : 'area',
                 sparkline : {
-                    enabled: true
+                    enabled: false
+                },
+                toolbar: {
+                    show: false
                 }
             },
             colors : ['#667eea', '#9066ea', '#66c0ea', '#66ead2', '#d266ea', '#66ea90'],
@@ -217,7 +245,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                     format: 'MMM dd, yyyy HH:mm:ss'
                 },
                 y    : {
-
                     formatter: (value) => {
                         return TemperaturePipe.formatTemperature(value, this.config.temperature_unit, true) as string;
                     }
@@ -226,7 +253,53 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
             xaxis: {
                 type: 'datetime',
                 labels: {
-                    datetimeUTC: false
+                    datetimeUTC: false,
+                    style: {
+                        fontSize: '11px',
+                        colors: this.isDarkMode() ? '#9ca3af' : '#6b7280'
+                    },
+                    datetimeFormatter: {
+                        year: 'yyyy',
+                        month: "MMM 'yy",
+                        day: 'dd MMM',
+                        hour: 'HH:mm'
+                    }
+                }
+            },
+            yaxis: {
+                labels: {
+                    formatter: (value) => {
+                        return `${Math.round(value)}${temperatureUnit}`;
+                    },
+                    style: {
+                        fontSize: '11px',
+                        colors: this.isDarkMode() ? '#9ca3af' : '#6b7280'
+                    }
+                },
+                title: {
+                    text: `Temperature (${temperatureUnit})`,
+                    style: {
+                        fontSize: '12px',
+                        color: this.isDarkMode() ? '#9ca3af' : '#6b7280'
+                    }
+                }
+            },
+            grid: {
+                borderColor: this.isDarkMode() ? '#374151' : '#e0e0e0',
+                strokeDashArray: 4,
+                yaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
+                xaxis: {
+                    lines: {
+                        show: false
+                    }
+                },
+                padding: {
+                    left: 10,
+                    right: 10
                 }
             }
         };
@@ -264,6 +337,31 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
         this.summaryData[wwn].device.archived = false;
     }
 
+    get allDrivesVisible(): boolean {
+        const wwns = Object.keys(this.visibleDrives);
+        return wwns.length > 0 && wwns.every(wwn => this.visibleDrives[wwn]);
+    }
+
+    get someDrivesVisible(): boolean {
+        const wwns = Object.keys(this.visibleDrives);
+        return wwns.some(wwn => this.visibleDrives[wwn]);
+    }
+
+    toggleAllDrives(): void {
+        const newState = !this.allDrivesVisible;
+        for (const wwn in this.visibleDrives) {
+            this.visibleDrives[wwn] = newState;
+        }
+        this.tempChart?.updateSeries(this._deviceDataTemperatureSeries());
+        this._changeDetectorRef.markForCheck();
+    }
+
+    toggleDriveVisibility(wwn: string): void {
+        this.visibleDrives[wwn] = !this.visibleDrives[wwn];
+        this.tempChart?.updateSeries(this._deviceDataTemperatureSeries());
+        this._changeDetectorRef.markForCheck();
+    }
+
     /*
     DURATION_KEY_DAY    = "day"
     DURATION_KEY_WEEK    = "week"
@@ -283,8 +381,8 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy
                     this.summaryData[wwn].temp_history = tempHistoryData[wwn] || []
                 }
 
-                // Prepare the chart series data
-                this.tempChart.updateSeries(this._deviceDataTemperatureSeries())
+                // Prepare the chart series data (filtered by visibility)
+                this.tempChart.updateSeries(this._deviceDataTemperatureSeries());
             });
     }
 

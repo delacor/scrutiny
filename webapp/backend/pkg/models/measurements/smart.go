@@ -29,7 +29,8 @@ type Smart struct {
 	Attributes map[string]SmartAttribute `json:"attrs"`
 
 	//status
-	Status pkg.DeviceStatus
+	Status           pkg.DeviceStatus
+	HasForcedFailure bool // True when an override with action=force_status, status=failed was applied
 }
 
 func (sm *Smart) Flatten() (tags map[string]string, fields map[string]interface{}) {
@@ -69,11 +70,23 @@ func NewSmartFromInfluxDB(attrs map[string]interface{}) (*Smart, error) {
 	for key, val := range attrs {
 		switch key {
 		case "temp":
-			sm.Temp = val.(int64)
+			if intVal, ok := val.(int64); ok {
+				sm.Temp = intVal
+			} else {
+				log.Printf("unable to parse temp information: %v", val)
+			}
 		case "power_on_hours":
-			sm.PowerOnHours = val.(int64)
+			if intVal, ok := val.(int64); ok {
+				sm.PowerOnHours = intVal
+			} else {
+				log.Printf("unable to parse power_on_hours information: %v", val)
+			}
 		case "power_cycle_count":
-			sm.PowerCycleCount = val.(int64)
+			if intVal, ok := val.(int64); ok {
+				sm.PowerCycleCount = intVal
+			} else {
+				log.Printf("unable to parse power_cycle_count information: %v", val)
+			}
 		case "logical_block_size":
 			if intVal, ok := val.(int64); ok {
 				sm.LogicalBlockSize = intVal
@@ -211,8 +224,12 @@ func (sm *Smart) ProcessAtaSmartInfo(cfg config.Interface, tableItems []collecto
 				} else if result.WarnAbove != nil || result.FailAbove != nil {
 					// Apply custom thresholds
 					if thresholdStatus := overrides.ApplyThresholds(result, attrModel.RawValue); thresholdStatus != nil {
-						attrModel.Status = pkg.AttributeStatusSet(attrModel.Status, *thresholdStatus)
-						attrModel.StatusReason = "Custom threshold exceeded"
+						attrModel.Status = *thresholdStatus // Replace status entirely with custom threshold result
+						if *thresholdStatus == pkg.AttributeStatusPassed {
+							attrModel.StatusReason = "Within custom threshold"
+						} else {
+							attrModel.StatusReason = "Custom threshold exceeded"
+						}
 					}
 				}
 			}
@@ -287,8 +304,12 @@ func (sm *Smart) ProcessAtaDeviceStatistics(cfg config.Interface, deviceStatisti
 						attrModel.StatusReason = result.StatusReason
 					} else if result.WarnAbove != nil || result.FailAbove != nil {
 						if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
-							attrModel.Status = pkg.AttributeStatusSet(attrModel.Status, *thresholdStatus)
-							attrModel.StatusReason = "Custom threshold exceeded"
+							attrModel.Status = *thresholdStatus // Replace status entirely with custom threshold result
+							if *thresholdStatus == pkg.AttributeStatusPassed {
+								attrModel.StatusReason = "Within custom threshold"
+							} else {
+								attrModel.StatusReason = "Custom threshold exceeded"
+							}
 						}
 					}
 				}
@@ -344,8 +365,12 @@ func (sm *Smart) ProcessNvmeSmartInfo(cfg config.Interface, nvmeSmartHealthInfor
 					nvmeAttr.StatusReason = result.StatusReason
 				} else if result.WarnAbove != nil || result.FailAbove != nil {
 					if thresholdStatus := overrides.ApplyThresholds(result, nvmeAttr.Value); thresholdStatus != nil {
-						nvmeAttr.Status = pkg.AttributeStatusSet(nvmeAttr.Status, *thresholdStatus)
-						nvmeAttr.StatusReason = "Custom threshold exceeded"
+						nvmeAttr.Status = *thresholdStatus // Replace status entirely with custom threshold result
+						if *thresholdStatus == pkg.AttributeStatusPassed {
+							nvmeAttr.StatusReason = "Within custom threshold"
+						} else {
+							nvmeAttr.StatusReason = "Custom threshold exceeded"
+						}
 					}
 				}
 			}
@@ -398,8 +423,12 @@ func (sm *Smart) ProcessScsiSmartInfo(cfg config.Interface, defectGrownList int6
 						scsiAttr.StatusReason = result.StatusReason
 					} else if result.WarnAbove != nil || result.FailAbove != nil {
 						if thresholdStatus := overrides.ApplyThresholds(result, attrValue); thresholdStatus != nil {
-							scsiAttr.Status = pkg.AttributeStatusSet(scsiAttr.Status, *thresholdStatus)
-							scsiAttr.StatusReason = "Custom threshold exceeded"
+							scsiAttr.Status = *thresholdStatus // Replace status entirely with custom threshold result
+							if *thresholdStatus == pkg.AttributeStatusPassed {
+								scsiAttr.StatusReason = "Within custom threshold"
+							} else {
+								scsiAttr.StatusReason = "Custom threshold exceeded"
+							}
 						}
 					}
 				}
@@ -455,10 +484,18 @@ func (sm *Smart) processAtaSmartInfoWithOverrides(cfg config.Interface, tableIte
 			} else if result.Status != nil {
 				attrModel.Status = *result.Status
 				attrModel.StatusReason = result.StatusReason
+				// Track if user explicitly forced a failure status
+				if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
+					sm.HasForcedFailure = true
+				}
 			} else if result.WarnAbove != nil || result.FailAbove != nil {
 				if thresholdStatus := overrides.ApplyThresholds(result, attrModel.RawValue); thresholdStatus != nil {
-					attrModel.Status = pkg.AttributeStatusSet(attrModel.Status, *thresholdStatus)
-					attrModel.StatusReason = "Custom threshold exceeded"
+					attrModel.Status = *thresholdStatus // Replace status entirely with custom threshold result
+					if *thresholdStatus == pkg.AttributeStatusPassed {
+						attrModel.StatusReason = "Within custom threshold"
+					} else {
+						attrModel.StatusReason = "Custom threshold exceeded"
+					}
 				}
 			}
 		}
@@ -512,10 +549,18 @@ func (sm *Smart) processAtaDeviceStatisticsWithOverrides(cfg config.Interface, d
 				} else if result.Status != nil {
 					attrModel.Status = *result.Status
 					attrModel.StatusReason = result.StatusReason
+					// Track if user explicitly forced a failure status
+					if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
+						sm.HasForcedFailure = true
+					}
 				} else if result.WarnAbove != nil || result.FailAbove != nil {
 					if thresholdStatus := overrides.ApplyThresholds(result, attrModel.Value); thresholdStatus != nil {
-						attrModel.Status = pkg.AttributeStatusSet(attrModel.Status, *thresholdStatus)
-						attrModel.StatusReason = "Custom threshold exceeded"
+						attrModel.Status = *thresholdStatus // Replace status entirely with custom threshold result
+						if *thresholdStatus == pkg.AttributeStatusPassed {
+							attrModel.StatusReason = "Within custom threshold"
+						} else {
+							attrModel.StatusReason = "Custom threshold exceeded"
+						}
 					}
 				}
 			}
@@ -564,10 +609,18 @@ func (sm *Smart) processNvmeSmartInfoWithOverrides(cfg config.Interface, nvmeSma
 			} else if result.Status != nil {
 				nvmeAttr.Status = *result.Status
 				nvmeAttr.StatusReason = result.StatusReason
+				// Track if user explicitly forced a failure status
+				if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
+					sm.HasForcedFailure = true
+				}
 			} else if result.WarnAbove != nil || result.FailAbove != nil {
 				if thresholdStatus := overrides.ApplyThresholds(result, nvmeAttr.Value); thresholdStatus != nil {
-					nvmeAttr.Status = pkg.AttributeStatusSet(nvmeAttr.Status, *thresholdStatus)
-					nvmeAttr.StatusReason = "Custom threshold exceeded"
+					nvmeAttr.Status = *thresholdStatus // Replace status entirely with custom threshold result
+					if *thresholdStatus == pkg.AttributeStatusPassed {
+						nvmeAttr.StatusReason = "Within custom threshold"
+					} else {
+						nvmeAttr.StatusReason = "Custom threshold exceeded"
+					}
 				}
 			}
 		}
@@ -615,10 +668,18 @@ func (sm *Smart) processScsiSmartInfoWithOverrides(cfg config.Interface, defectG
 				} else if result.Status != nil {
 					scsiAttr.Status = *result.Status
 					scsiAttr.StatusReason = result.StatusReason
+					// Track if user explicitly forced a failure status
+					if pkg.AttributeStatusHas(*result.Status, pkg.AttributeStatusFailedScrutiny) {
+						sm.HasForcedFailure = true
+					}
 				} else if result.WarnAbove != nil || result.FailAbove != nil {
 					if thresholdStatus := overrides.ApplyThresholds(result, attrValue); thresholdStatus != nil {
-						scsiAttr.Status = pkg.AttributeStatusSet(scsiAttr.Status, *thresholdStatus)
-						scsiAttr.StatusReason = "Custom threshold exceeded"
+						scsiAttr.Status = *thresholdStatus // Replace status entirely with custom threshold result
+						if *thresholdStatus == pkg.AttributeStatusPassed {
+							scsiAttr.StatusReason = "Within custom threshold"
+						} else {
+							scsiAttr.StatusReason = "Custom threshold exceeded"
+						}
 					}
 				}
 			}

@@ -16,6 +16,15 @@ func (sr *scrutinyRepository) GetAttributeOverrides(ctx context.Context) ([]mode
 	return dbOverrides, nil
 }
 
+// GetAttributeOverrideByID retrieves a single attribute override by its ID
+func (sr *scrutinyRepository) GetAttributeOverrideByID(ctx context.Context, id uint) (*models.AttributeOverride, error) {
+	var override models.AttributeOverride
+	if err := sr.gormClient.WithContext(ctx).First(&override, id).Error; err != nil {
+		return nil, err
+	}
+	return &override, nil
+}
+
 // GetMergedOverrides retrieves overrides from both config file and database,
 // merging them with database overrides taking precedence over config overrides.
 func (sr *scrutinyRepository) GetMergedOverrides(ctx context.Context) []overrides.AttributeOverride {
@@ -38,16 +47,17 @@ func (sr *scrutinyRepository) GetMergedOverrides(ctx context.Context) []override
 
 // SaveAttributeOverride creates or updates an attribute override
 // If the override has an ID, it will update; otherwise it will create
-func (sr *scrutinyRepository) SaveAttributeOverride(ctx context.Context, override models.AttributeOverride) error {
+// Uses pointer so that GORM can populate the ID field after creation
+func (sr *scrutinyRepository) SaveAttributeOverride(ctx context.Context, override *models.AttributeOverride) error {
 	// Ensure source is set to "ui" for database-saved overrides
 	override.Source = "ui"
 
 	if override.ID == 0 {
 		// Create new override
-		return sr.gormClient.WithContext(ctx).Create(&override).Error
+		return sr.gormClient.WithContext(ctx).Create(override).Error
 	}
 	// Update existing override
-	return sr.gormClient.WithContext(ctx).Save(&override).Error
+	return sr.gormClient.WithContext(ctx).Save(override).Error
 }
 
 // DeleteAttributeOverride removes an attribute override by ID

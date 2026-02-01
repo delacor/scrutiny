@@ -42,7 +42,7 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 	// Get SMartResults from InfluxDB
 
 	// Get parser flux query result
-	//appConfig.GetString("web.influxdb.bucket")
+	// Note: WWN is validated at the handler level before reaching this function
 	queryStr := sr.aggregateSmartAttributesQuery(wwn, durationKey, selectEntries, selectEntriesOffset, attributes)
 	log.Infoln(queryStr)
 
@@ -65,7 +65,7 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 
 		}
 		if result.Err() != nil {
-			fmt.Printf("Query error: %s\n", result.Err().Error())
+			sr.logger.Errorf("Query error: %s", result.Err().Error())
 		}
 	} else {
 		return nil, err
@@ -85,6 +85,50 @@ func (sr *scrutinyRepository) GetSmartAttributeHistory(ctx context.Context, wwn 
 	//	return
 	//}
 
+}
+
+// GetPreviousSmartSubmission returns the previous raw SMART submission without daily aggregation.
+// This is used for repeat notification detection to compare against the actual previous submission,
+// not the previous day's aggregated value.
+// Returns the second most recent submission (skipping the one just saved).
+// Note: WWN is validated at the handler level before reaching this function.
+func (sr *scrutinyRepository) GetPreviousSmartSubmission(ctx context.Context, wwn string) ([]measurements.Smart, error) {
+	// Query raw data from the metrics bucket (last week) without aggregation
+	// Use offset=1 to skip the most recent entry (which is the one just saved)
+	queryStr := fmt.Sprintf(`
+import "influxdata/influxdb/schema"
+from(bucket: "%s")
+|> range(start: -1w, stop: now())
+|> filter(fn: (r) => r["_measurement"] == "smart")
+|> filter(fn: (r) => r["device_wwn"] == "%s")
+|> schema.fieldsAsCols()
+|> group()
+|> sort(columns: ["_time"], desc: true)
+|> limit(n: 1, offset: 1)
+`, sr.appConfig.GetString("web.influxdb.bucket"), wwn)
+
+	log.Debugln("GetPreviousSmartSubmission query:", queryStr)
+
+	smartResults := []measurements.Smart{}
+
+	result, err := sr.influxQueryApi.Query(ctx, queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	for result.Next() {
+		smartData, err := measurements.NewSmartFromInfluxDB(result.Record().Values())
+		if err != nil {
+			return nil, err
+		}
+		smartResults = append(smartResults, *smartData)
+	}
+
+	if result.Err() != nil {
+		return nil, result.Err()
+	}
+
+	return smartResults, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -193,6 +237,8 @@ func (sr *scrutinyRepository) aggregateSmartAttributesQuery(wwn string, duration
 	return strings.Join(partialQueryStr, "\n")
 }
 
+// generateSmartAttributesSubquery generates a subquery for SMART attributes.
+// Note: WWN is validated at the handler level before reaching this function.
 func (sr *scrutinyRepository) generateSmartAttributesSubquery(wwn string, durationKey string, selectEntries int, selectEntriesOffset int, attributes []string) string {
 	bucketName := sr.lookupBucketName(durationKey)
 	durationRange := sr.lookupDuration(durationKey)

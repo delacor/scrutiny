@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	_ "go.uber.org/automaxprocs"
+
 	utils "github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
@@ -85,7 +87,7 @@ OPTIONS:
 
 			subtitle := scrutiny + utils.LeftPad2Len(versionInfo, " ", 65-len(scrutiny))
 
-			color.New(color.FgGreen).Fprintf(c.App.Writer, fmt.Sprintf(utils.StripIndent(
+			banner := fmt.Sprintf(utils.StripIndent(
 				`
 			 ___   ___  ____  __  __  ____  ____  _  _  _  _
 			/ __) / __)(  _ \(  )(  )(_  _)(_  _)( \( )( \/ )
@@ -93,7 +95,8 @@ OPTIONS:
 			(___/ \___)(_)\_)(______) (__) (____)(_)\_) (__)
 			%s
 
-			`), subtitle))
+			`), subtitle)
+			color.New(color.FgGreen).Fprintf(c.App.Writer, "%s", banner)
 
 			return nil
 		},
@@ -108,7 +111,7 @@ OPTIONS:
 						err = config.ReadConfig(c.String("config"), bootstrapLogger) // Find and read the config file
 						if err != nil {                                              // Handle errors reading the config file
 							//ignore "could not find config file"
-							fmt.Printf("Could not find config file at specified path: %s", c.String("config"))
+							bootstrapLogger.Printf("Could not find config file at specified path: %s", c.String("config"))
 							return err
 						}
 					}

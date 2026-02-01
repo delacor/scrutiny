@@ -17,6 +17,8 @@ import (
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20251108044508"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260108000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260122000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260129000000"
+	"github.com/analogj/scrutiny/webapp/backend/pkg/database/migrations/m20260131000000"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/collector"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/models/measurements"
@@ -96,9 +98,9 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 
 				//calculate bucket oldest dates
 				today := time.Now()
-				dailyBucketMax := today.Add(-RETENTION_PERIOD_15_DAYS_IN_SECONDS * time.Second)     //15 days
-				weeklyBucketMax := today.Add(-RETENTION_PERIOD_9_WEEKS_IN_SECONDS * time.Second)    //9 weeks
-				monthlyBucketMax := today.Add(-RETENTION_PERIOD_25_MONTHS_IN_SECONDS * time.Second) //25 weeks
+				dailyBucketMax := today.Add(-DEFAULT_RETENTION_PERIOD_15_DAYS_IN_SECONDS * time.Second)     //15 days
+				weeklyBucketMax := today.Add(-DEFAULT_RETENTION_PERIOD_9_WEEKS_IN_SECONDS * time.Second)    //9 weeks
+				monthlyBucketMax := today.Add(-DEFAULT_RETENTION_PERIOD_25_MONTHS_IN_SECONDS * time.Second) //25 months
 
 				for _, preDevice := range preDevices {
 					sr.logger.Debugf("====================================")
@@ -450,6 +452,47 @@ func (sr *scrutinyRepository) Migrate(ctx context.Context) error {
 			ID: "m20260122000000", // add attribute_overrides table for UI-configurable SMART overrides
 			Migrate: func(tx *gorm.DB) error {
 				return tx.AutoMigrate(&m20260122000000.AttributeOverride{})
+			},
+		},
+		{
+			ID: "m20260124000000", // add missed ping notification settings
+			Migrate: func(tx *gorm.DB) error {
+				// Add missed ping notification settings with defaults
+				var defaultSettings = []m20220716214900.Setting{
+					{
+						SettingKeyName:        "metrics.notify_on_missed_ping",
+						SettingKeyDescription: "Enable notifications when collectors miss their scheduled pings (true | false)",
+						SettingDataType:       "bool",
+						SettingValueBool:      false,
+					},
+					{
+						SettingKeyName:        "metrics.missed_ping_timeout_minutes",
+						SettingKeyDescription: "Minutes to wait before considering a collector missed (default: 60)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   60,
+					},
+					{
+						SettingKeyName:        "metrics.missed_ping_check_interval_mins",
+						SettingKeyDescription: "How often to check for missed pings in minutes (default: 5)",
+						SettingDataType:       "numeric",
+						SettingValueNumeric:   5,
+					},
+				}
+				return tx.Create(&defaultSettings).Error
+			},
+		},
+		{
+			ID: "m20260129000000", // add smart_display_mode to device data
+			Migrate: func(tx *gorm.DB) error {
+				// adding column (smart_display_mode)
+				return tx.AutoMigrate(m20260129000000.Device{})
+			},
+		},
+		{
+			ID: "m20260131000000", // add has_forced_failure to device data
+			Migrate: func(tx *gorm.DB) error {
+				// adding column (has_forced_failure)
+				return tx.AutoMigrate(m20260131000000.Device{})
 			},
 		},
 	})

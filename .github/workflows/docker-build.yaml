@@ -5,6 +5,13 @@ on:
     branches:
       - master
       - develop
+    paths:
+      - 'webapp/**'
+      - 'collector/**'
+      - 'docker/**'
+      - 'Makefile'
+      - 'go.mod'
+      - 'go.sum'
     tags:
       - 'v*.*.*'
   workflow_dispatch:
@@ -13,6 +20,10 @@ on:
         description: 'Tag suffix (e.g., latest, develop, or version like 1.0.0)'
         required: true
         default: 'latest'
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
@@ -126,7 +137,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           context: .
           file: docker/Dockerfile.collector-zfs
           push: true
@@ -237,6 +248,7 @@ jobs:
             # Branch builds
             type=raw,value=latest-omnibus,enable=${{ (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) && github.event_name != 'workflow_dispatch' }}
             type=raw,value=develop-omnibus,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
+            type=raw,value=develop,enable=${{ github.ref == 'refs/heads/develop' && github.event_name != 'workflow_dispatch' }}
             # Version tags
             type=semver,pattern={{version}}-omnibus
             type=semver,pattern={{major}}.{{minor}}-omnibus
