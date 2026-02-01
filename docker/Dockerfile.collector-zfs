@@ -34,10 +34,12 @@ WORKDIR /go/src/github.com/analogj/scrutiny
 COPY . /go/src/github.com/analogj/scrutiny
 
 RUN apt-get update && apt-get install -y file && rm -rf /var/lib/apt/lists/*
-RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} make binary-clean binary-collector-zfs
+# Build the binary - Makefile appends OS/ARCH to the name, so we rename it afterward
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} make binary-clean binary-collector-zfs && \
+    mv scrutiny-collector-zfs-* scrutiny-collector-zfs
 
 ######## Runtime stage - installs pre-downloaded packages (much faster than apt-get under QEMU)
-FROM --platform=$TARGETPLATFORM debian:trixie-slim AS runtime
+FROM debian:trixie-slim AS runtime
 
 ARG TARGETARCH
 
