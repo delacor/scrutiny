@@ -8,13 +8,14 @@ FROM --platform=$BUILDPLATFORM debian:trixie-slim AS package-downloader
 ARG TARGETARCH
 ARG DEBIAN_VERSION=trixie
 
-# Map TARGETARCH to Debian architecture names
+# Map TARGETARCH to Debian architecture names and enable multi-arch support
 RUN case ${TARGETARCH} in \
         "amd64") DEB_ARCH=amd64 ;; \
         "arm64") DEB_ARCH=arm64 ;; \
         "arm") DEB_ARCH=armhf ;; \
         *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
     esac && \
+    dpkg --add-architecture ${DEB_ARCH} && \
     echo "deb http://deb.debian.org/debian ${DEBIAN_VERSION} contrib" > /etc/apt/sources.list.d/contrib.list && \
     apt-get update && \
     mkdir -p /packages && \
