@@ -2,27 +2,63 @@
 # ZFS Collector Image
 ########################################################################################################################
 
+######## Download zfsutils-linux package and dependencies natively (fast)
+FROM --platform=$BUILDPLATFORM debian:trixie-slim AS package-downloader
 
-########
-FROM golang:1.24-trixie AS backendbuild
+ARG TARGETARCH
+ARG DEBIAN_VERSION=trixie
+
+# Map TARGETARCH to Debian architecture names
+RUN case ${TARGETARCH} in \
+        "amd64") DEB_ARCH=amd64 ;; \
+        "arm64") DEB_ARCH=arm64 ;; \
+        "arm") DEB_ARCH=armhf ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+    esac && \
+    echo "deb http://deb.debian.org/debian ${DEBIAN_VERSION} contrib" > /etc/apt/sources.list.d/contrib.list && \
+    apt-get update && \
+    mkdir -p /packages && \
+    cd /packages && \
+    apt-get download $(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances zfsutils-linux:${DEB_ARCH} | grep "^\w" | sort -u) && \
+    ls -la /packages/
+
+######## Build Go binary natively (fast)
+FROM --platform=$BUILDPLATFORM golang:1.24-trixie AS backendbuild
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /go/src/github.com/analogj/scrutiny
 
 COPY . /go/src/github.com/analogj/scrutiny
 
 RUN apt-get update && apt-get install -y file && rm -rf /var/lib/apt/lists/*
-RUN make binary-clean binary-collector-zfs
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} make binary-clean binary-collector-zfs
 
-########
-FROM debian:trixie-slim AS runtime
+######## Runtime stage - installs pre-downloaded packages (much faster than apt-get under QEMU)
+FROM --platform=$TARGETPLATFORM debian:trixie-slim AS runtime
+
+ARG TARGETARCH
+
 WORKDIR /opt/scrutiny
 ENV PATH="/opt/scrutiny/bin:${PATH}"
 
-RUN echo "deb http://deb.debian.org/debian trixie contrib" >> /etc/apt/sources.list.d/contrib.list && \
-    apt-get update && \
-    apt-get install -y cron zfsutils-linux ca-certificates tzdata && \
-    rm -rf /var/lib/apt/lists/* && \
+# Install base packages (small, fast even under QEMU)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        cron \
+        ca-certificates \
+        tzdata \
+    && rm -rf /var/lib/apt/lists/* && \
     update-ca-certificates
+
+# Copy and install pre-downloaded zfsutils-linux packages
+# This is much faster than running apt-get install under QEMU emulation
+COPY --from=package-downloader /packages/*.deb /tmp/packages/
+RUN dpkg -i /tmp/packages/*.deb 2>/dev/null || true && \
+    apt-get install -y -f && \
+    rm -rf /tmp/packages && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY /docker/entrypoint-collector-zfs.sh /entrypoint-collector-zfs.sh
 COPY /rootfs/etc/cron.d/scrutiny-zfs /etc/cron.d/scrutiny-zfs
